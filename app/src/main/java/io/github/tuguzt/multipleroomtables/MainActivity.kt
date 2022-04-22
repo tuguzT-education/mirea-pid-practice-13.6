@@ -1,14 +1,15 @@
 package io.github.tuguzt.multipleroomtables
 
-import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 import android.view.View
 import android.widget.AdapterView
 import android.widget.ArrayAdapter
-import android.widget.Toast
+import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
 import androidx.room.Room
 import io.github.tuguzt.multipleroomtables.databinding.ActivityMainBinding
+import io.github.tuguzt.multipleroomtables.entities.Student
+import io.github.tuguzt.multipleroomtables.entities.Subject
 import kotlinx.coroutines.launch
 
 class MainActivity : AppCompatActivity() {
@@ -18,25 +19,33 @@ class MainActivity : AppCompatActivity() {
         Room.databaseBuilder(this, SchoolDatabase::class.java, "school.db").build()
     }
 
+    private lateinit var items: List<String>
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
-        binding.rbStudent.setOnClickListener{
+        val students = DataExample.students.map(Student::studentName)
+        binding.rbStudent.setOnClickListener {
             binding.listCaption.text = getString(R.string.student_subjects)
-            // так же должен меняться выпадающий список
+
+            items = students
+            val adapter = ArrayAdapter(this, android.R.layout.simple_spinner_item, items)
+            binding.spinner.adapter = adapter
         }
 
-        binding.rbSubject.setOnClickListener{
+        val subjects = DataExample.subjects.map(Subject::subjectName)
+        binding.rbSubject.setOnClickListener {
             binding.listCaption.text = getString(R.string.student_study)
-            // также должен меняться выпадающий список
+
+            items = subjects
+            val adapter = ArrayAdapter(this, android.R.layout.simple_spinner_item, items)
+            binding.spinner.adapter = adapter
         }
 
-        val items = arrayOf("Здесь", "должен", "располагаться", "список", "учеников", "или предметов")
-        val adapter = ArrayAdapter(this, android.R.layout.simple_spinner_item, items)
-        binding.spinner.adapter = adapter
+        val schoolDao = database.schoolDao
 
         binding.spinner.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
             override fun onItemSelected(
@@ -45,15 +54,24 @@ class MainActivity : AppCompatActivity() {
                 position: Int,
                 id: Long,
             ) {
-                Toast.makeText(applicationContext, "При выборе должен меняться список на предметы выбранного ученика или учеников, изучающих выбранный предмет", Toast.LENGTH_LONG).show()
+                val item = items[position]
+                lifecycleScope.launch {
+                    val results = when (item) {
+                        in students -> schoolDao.getSubjectsOfStudent(item)
+                            .map { it.subjects.map(Subject::subjectName) }
+                            .flatten()
+                        in subjects -> schoolDao.getStudentsOfSubject(item)
+                            .map { it.students.map(Student::studentName) }
+                            .flatten()
+                        else -> emptyList()
+                    }
+                    binding.recyclerView.adapter = ResultAdapter(results)
+                }
             }
 
-            override fun onNothingSelected(parent: AdapterView<*>?) {
-                // TODO Auto-generated method stub
-            }
+            override fun onNothingSelected(parent: AdapterView<*>?) = Unit
         }
 
-        val schoolDao = database.schoolDao
         lifecycleScope.launch {
             DataExample.directors.forEach { schoolDao.insertDirector(it) }
             DataExample.schools.forEach { schoolDao.insertSchool(it) }
