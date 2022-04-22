@@ -1,3 +1,9 @@
 <resources>
     <string name="app_name">MultipleRoomTables</string>
+    <string name="student">Student</string>
+    <string name="subject">Subject</string>
+    <string name="the_list_of">The list of…</string>
+    <string name="disclaimer">Эта разметка не работает.\nЗадача практической работы в том,\nчтобы она заработала</string>
+    <string name="student_subjects">Student\'s subjects</string>
+    <string name="student_study">Student\'s study</string>
 </resources>
